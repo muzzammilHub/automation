@@ -4,7 +4,7 @@ from pptx.enum.shapes import MSO_SHAPE_TYPE
 from PIL import Image
 from io import BytesIO
 
-ppt_path = "" #filepath
+ppt_path = "investor-presentation-jefferies-2016.pptx" #filepath
 presentation = Presentation(ppt_path)
 
 images_dir = "ppt_images"
@@ -28,25 +28,30 @@ def save_text(text, text_path):
     except Exception as e:
         print(f"Failed to save text at {text_path}: {e}")
 
+def extract_images_from_shape(shape, slide_index):
+    if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
+        try:
+            image = shape.image
+            image_filename = f"slide_{slide_index}_image_{shape.shape_id}.png"
+            image_path = os.path.join(images_dir, image_filename)
+            save_image(image, image_path)
+        except Exception as e:
+            print(f"Failed to process image on slide {slide_index}, shape {shape.shape_id}: {e}")
+    elif shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+        for sub_shape in shape.shapes:
+            extract_images_from_shape(sub_shape, slide_index)
+
 
 def extract_and_save_ppt_content():
     try:
-        for i, slide in enumerate(presentation.slides):
+        for i, slide in enumerate(presentation.slides, start=1):
             slide_text = ""
             for shape in slide.shapes:
                 if shape.has_text_frame:
                     slide_text += shape.text + '\n'
+                extract_images_from_shape(shape, i)
 
-                if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
-                    try:
-                        image = shape.image
-                        image_filename = f"slide_{i+1}_image_{shape.shape_id}.png"
-                        image_path = os.path.join(images_dir, image_filename)
-                        save_image(image, image_path)
-                    except Exception as e:
-                        print(f"Failed to process image on slide {i+1}, shape {shape.shape_id}: {e}")
-
-            text_filename = f"slide_{i+1}.txt"
+            text_filename = f"slide_{i}.txt"
             text_path = os.path.join(text_dir, text_filename)
             save_text(slide_text, text_path)
 
